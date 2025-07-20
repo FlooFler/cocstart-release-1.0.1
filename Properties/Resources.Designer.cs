@@ -61,12 +61,11 @@ namespace cocstart.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        ///   Looks up a localized string similar to .
         /// </summary>
-        internal static System.Drawing.Bitmap bggradient {
+        internal static string bggradient {
             get {
-                object obj = ResourceManager.GetObject("bggradient", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
+                return ResourceManager.GetString("bggradient", resourceCulture);
             }
         }
         

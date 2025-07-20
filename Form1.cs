@@ -61,6 +61,7 @@ namespace cocstart
 
             this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
+            this.BackColor = Color.FromArgb(27, 34, 44);
 
             togglemusicon.Hide();
             this.FormClosing += Form1_FormClosing;
@@ -273,45 +274,6 @@ namespace cocstart
                 Ball_color = Ball_color,
                 stats = stats
             };
-        }
-
-        static bool CheckSystemRequirements()
-        {
-            // Check .NET version (approximate)
-            Version requiredDotNet = new Version(6, 0);
-            Version currentDotNet = Environment.Version;
-            if (currentDotNet < requiredDotNet)
-            {
-                MessageBox.Show($"This application requires .NET {requiredDotNet} or higher.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-
-            // Check Windows version (Windows 10 = 10.0)
-            Version win10 = new Version(10, 0);
-            Version osVersion = Environment.OSVersion.Version;
-            if (osVersion < win10)
-            {
-                MessageBox.Show("This application requires Windows 10 or higher.", "Unsupported OS", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-
-            // Check screen resolution
-            if (Screen.PrimaryScreen.Bounds.Width < 1280 || Screen.PrimaryScreen.Bounds.Height < 720)
-            {
-                MessageBox.Show("Screen resolution must be at least 1280x720.", "Display Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            // Check available RAM (in MB)
-            var memStatus = new ComputerInfo();
-            ulong totalRamMB = memStatus.TotalPhysicalMemory / (1024 * 1024);
-            if (totalRamMB < 4096)
-            {
-                MessageBox.Show("At least 4 GB of RAM is required.", "Insufficient Memory", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            return true;
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)

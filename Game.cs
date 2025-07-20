@@ -1016,7 +1016,6 @@ namespace f_x
         
         private void buttonClearAll_Click(object sender, EventArgs e)
         {
-            // Remove all physics bodies
             foreach (var bodyList in graphBodies)
             {
                 foreach (var body in bodyList)
@@ -1025,13 +1024,11 @@ namespace f_x
                 }
             }
 
-            // Clear all your data collections
             functions.Clear();
             functionExpressions.Clear();
             PointList.Clear();
             graphBodies.Clear();
 
-            // Clear the ListView
             listViewFunctions.Items.Clear();
 
         }
@@ -1277,7 +1274,6 @@ namespace f_x
             if (float.IsNaN(Ymin)) Ymin = -40f;
             if (float.IsNaN(Ymax)) Ymax = 40f;
 
-            // 3) Ensure min < max
             if (Xmin >= Xmax) Xmax = Xmin + 1f;
             if (Ymin >= Ymax) Ymax = Ymin + 1f;
 
@@ -1434,8 +1430,6 @@ namespace f_x
         }
         private void LoadPreviousLevel()
         {
-            // Logic to load the next level  
-            // Example:  
             int nextLevelId = level_id - 1;
             levelLabel.Text = "LEVEL " + nextLevelId.ToString();
             if (level_id == 1)

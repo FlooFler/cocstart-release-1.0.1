@@ -62,9 +62,10 @@
             playbutton.FlatStyle = FlatStyle.Flat;
             playbutton.Font = new Font("Microsoft JhengHei", 25F, FontStyle.Regular, GraphicsUnit.Point, 0);
             playbutton.ForeColor = Color.White;
-            playbutton.Location = new Point(842, 417);
+            playbutton.Location = new Point(737, 313);
+            playbutton.Margin = new Padding(3, 2, 3, 2);
             playbutton.Name = "playbutton";
-            playbutton.Size = new Size(243, 69);
+            playbutton.Size = new Size(213, 52);
             playbutton.TabIndex = 0;
             playbutton.Text = "PLAY";
             playbutton.UseVisualStyleBackColor = false;
@@ -79,9 +80,10 @@
             themebutton.FlatStyle = FlatStyle.Flat;
             themebutton.Font = new Font("Microsoft JhengHei", 16.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             themebutton.ForeColor = Color.White;
-            themebutton.Location = new Point(857, 747);
+            themebutton.Location = new Point(750, 560);
+            themebutton.Margin = new Padding(3, 2, 3, 2);
             themebutton.Name = "themebutton";
-            themebutton.Size = new Size(171, 53);
+            themebutton.Size = new Size(150, 40);
             themebutton.TabIndex = 2;
             themebutton.Text = "Themes";
             themebutton.UseVisualStyleBackColor = false;
@@ -96,9 +98,10 @@
             freemodebutton.FlatStyle = FlatStyle.Flat;
             freemodebutton.Font = new Font("Microsoft JhengHei", 16.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             freemodebutton.ForeColor = Color.White;
-            freemodebutton.Location = new Point(857, 611);
+            freemodebutton.Location = new Point(750, 458);
+            freemodebutton.Margin = new Padding(3, 2, 3, 2);
             freemodebutton.Name = "freemodebutton";
-            freemodebutton.Size = new Size(171, 53);
+            freemodebutton.Size = new Size(150, 40);
             freemodebutton.TabIndex = 3;
             freemodebutton.Text = "Free Mode";
             freemodebutton.UseVisualStyleBackColor = false;
@@ -113,9 +116,10 @@
             statsbutton.FlatStyle = FlatStyle.Flat;
             statsbutton.Font = new Font("Microsoft JhengHei", 16.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             statsbutton.ForeColor = Color.White;
-            statsbutton.Location = new Point(857, 892);
+            statsbutton.Location = new Point(750, 669);
+            statsbutton.Margin = new Padding(3, 2, 3, 2);
             statsbutton.Name = "statsbutton";
-            statsbutton.Size = new Size(171, 53);
+            statsbutton.Size = new Size(150, 40);
             statsbutton.TabIndex = 4;
             statsbutton.Text = "Statistics";
             statsbutton.UseVisualStyleBackColor = false;
@@ -125,9 +129,10 @@
             // 
             pictureBox5.BackColor = Color.Transparent;
             pictureBox5.Image = (Image)resources.GetObject("pictureBox5.Image");
-            pictureBox5.Location = new Point(11, 927);
+            pictureBox5.Location = new Point(10, 695);
+            pictureBox5.Margin = new Padding(3, 2, 3, 2);
             pictureBox5.Name = "pictureBox5";
-            pictureBox5.Size = new Size(114, 93);
+            pictureBox5.Size = new Size(100, 70);
             pictureBox5.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox5.TabIndex = 8;
             pictureBox5.TabStop = false;
@@ -136,9 +141,10 @@
             // 
             gear.BackColor = Color.Azure;
             gear.Image = (Image)resources.GetObject("gear.Image");
-            gear.Location = new Point(49, 952);
+            gear.Location = new Point(43, 714);
+            gear.Margin = new Padding(3, 2, 3, 2);
             gear.Name = "gear";
-            gear.Size = new Size(35, 35);
+            gear.Size = new Size(31, 26);
             gear.SizeMode = PictureBoxSizeMode.Zoom;
             gear.TabIndex = 9;
             gear.TabStop = false;
@@ -148,9 +154,10 @@
             // 
             pictureBox7.BackColor = Color.Transparent;
             pictureBox7.Image = (Image)resources.GetObject("pictureBox7.Image");
-            pictureBox7.Location = new Point(1776, 12);
+            pictureBox7.Location = new Point(1554, 9);
+            pictureBox7.Margin = new Padding(3, 2, 3, 2);
             pictureBox7.Name = "pictureBox7";
-            pictureBox7.Size = new Size(114, 93);
+            pictureBox7.Size = new Size(100, 70);
             pictureBox7.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox7.TabIndex = 10;
             pictureBox7.TabStop = false;
@@ -165,9 +172,10 @@
             quit.FlatStyle = FlatStyle.Flat;
             quit.Font = new Font("Microsoft JhengHei", 10.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
             quit.ForeColor = Color.White;
-            quit.Location = new Point(1813, 43);
+            quit.Location = new Point(1586, 32);
+            quit.Margin = new Padding(3, 2, 3, 2);
             quit.Name = "quit";
-            quit.Size = new Size(35, 35);
+            quit.Size = new Size(31, 26);
             quit.TabIndex = 11;
             quit.Text = "X";
             quit.UseVisualStyleBackColor = false;
@@ -177,9 +185,10 @@
             // 
             pictureBox6.BackColor = Color.Transparent;
             pictureBox6.Image = (Image)resources.GetObject("pictureBox6.Image");
-            pictureBox6.Location = new Point(1776, 927);
+            pictureBox6.Location = new Point(1554, 695);
+            pictureBox6.Margin = new Padding(3, 2, 3, 2);
             pictureBox6.Name = "pictureBox6";
-            pictureBox6.Size = new Size(114, 93);
+            pictureBox6.Size = new Size(100, 70);
             pictureBox6.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox6.TabIndex = 12;
             pictureBox6.TabStop = false;
@@ -188,9 +197,10 @@
             // 
             togglemusicoff.BackColor = Color.Azure;
             togglemusicoff.Image = (Image)resources.GetObject("togglemusicoff.Image");
-            togglemusicoff.Location = new Point(1813, 957);
+            togglemusicoff.Location = new Point(1586, 718);
+            togglemusicoff.Margin = new Padding(3, 2, 3, 2);
             togglemusicoff.Name = "togglemusicoff";
-            togglemusicoff.Size = new Size(35, 35);
+            togglemusicoff.Size = new Size(31, 26);
             togglemusicoff.SizeMode = PictureBoxSizeMode.Zoom;
             togglemusicoff.TabIndex = 13;
             togglemusicoff.TabStop = false;
@@ -200,9 +210,10 @@
             // 
             togglemusicon.BackColor = Color.Azure;
             togglemusicon.Image = (Image)resources.GetObject("togglemusicon.Image");
-            togglemusicon.Location = new Point(1734, 957);
+            togglemusicon.Location = new Point(1517, 718);
+            togglemusicon.Margin = new Padding(3, 2, 3, 2);
             togglemusicon.Name = "togglemusicon";
-            togglemusicon.Size = new Size(35, 35);
+            togglemusicon.Size = new Size(31, 26);
             togglemusicon.SizeMode = PictureBoxSizeMode.Zoom;
             togglemusicon.TabIndex = 14;
             togglemusicon.TabStop = false;
@@ -212,9 +223,10 @@
             // 
             pictureBox8.BackColor = Color.Transparent;
             pictureBox8.Image = (Image)resources.GetObject("pictureBox8.Image");
-            pictureBox8.Location = new Point(11, 12);
+            pictureBox8.Location = new Point(10, 9);
+            pictureBox8.Margin = new Padding(3, 2, 3, 2);
             pictureBox8.Name = "pictureBox8";
-            pictureBox8.Size = new Size(114, 93);
+            pictureBox8.Size = new Size(100, 70);
             pictureBox8.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox8.TabIndex = 15;
             pictureBox8.TabStop = false;
@@ -229,9 +241,10 @@
             info.FlatStyle = FlatStyle.Flat;
             info.Font = new Font("Microsoft JhengHei", 10.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
             info.ForeColor = Color.White;
-            info.Location = new Point(49, 43);
+            info.Location = new Point(43, 32);
+            info.Margin = new Padding(3, 2, 3, 2);
             info.Name = "info";
-            info.Size = new Size(35, 35);
+            info.Size = new Size(31, 26);
             info.TabIndex = 16;
             info.Text = "i";
             info.UseVisualStyleBackColor = false;
@@ -243,19 +256,19 @@
             title.BackColor = Color.Transparent;
             title.Font = new Font("Bahnschrift", 64F);
             title.ForeColor = Color.Azure;
-            title.Location = new Point(480, 153);
+            title.Location = new Point(420, 115);
             title.Name = "title";
-            title.Size = new Size(965, 128);
+            title.Size = new Size(777, 103);
             title.TabIndex = 17;
             title.Text = "Call of Coordinates";
             // 
             // FormMain
             // 
-            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackgroundImage = Properties.Resources.bggradient;
+            BackgroundImage = (Image)resources.GetObject("$this.BackgroundImage");
             BackgroundImageLayout = ImageLayout.Stretch;
-            ClientSize = new Size(1902, 1055);
+            ClientSize = new Size(1664, 791);
             Controls.Add(title);
             Controls.Add(info);
             Controls.Add(pictureBox8);
@@ -271,6 +284,7 @@
             Controls.Add(themebutton);
             Controls.Add(playbutton);
             DoubleBuffered = true;
+            Margin = new Padding(3, 2, 3, 2);
             MaximizeBox = false;
             Name = "FormMain";
             Text = "Call of Coordinates";

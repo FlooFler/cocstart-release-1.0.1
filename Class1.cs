@@ -14,7 +14,10 @@ namespace f_x
             this.DoubleBuffered = true;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint |
                           ControlStyles.OptimizedDoubleBuffer |
-                          ControlStyles.UserPaint, true);
+                          ControlStyles.UserPaint |
+                          ControlStyles.Selectable, true);
+
+            this.TabStop = true; 
         }
     }
 }

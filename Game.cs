@@ -11,6 +11,8 @@ using System.Reflection;
 using cocstart;
 using System.Globalization;
 using FarseerPhysics.Common;
+using System.Diagnostics;
+using System.Text.Json;
 
 
 
@@ -38,8 +40,56 @@ namespace f_x
         private Image star_im;
         private Image gen_im;
         private int star_count;
-        private GameStats stats;
+        private string filePath = "game_stats.json";
+        private GameStats stats = new GameStats();
+        private Stopwatch playTimer = new Stopwatch();
+       
+        public int StarsCollected { get; private set; }
+        public bool LevelCompleted { get; private set; }
+
         private bool free_mode = false;
+        private enum SpawnMode
+        {
+            Delete,
+            Generator,
+            Star,
+            Poligon,
+            Line
+        }
+        private SpawnMode currentSpawnMode = SpawnMode.Delete;
+        private List<Vector2> tempPolygonPoints = new List<Vector2>();
+        private List<Vector2> tempLinePoints = new List<Vector2>();
+        private Label levelLabel;
+        private Panel levelPanel;
+        private MaterialSlider lineThicknessSlider;
+        private MaterialSlider GenSizeSlider;
+        private MaterialSlider StarSizeSlider;
+        private MaterialButton buttonNextLevel;
+        private MaterialButton buttonPreviousLevel;
+        private Panel LinesliderPanel;
+        private Panel GenSliderPanel;
+        private Panel StarSliderPanel;
+        private Label winLabel; 
+        private float Thickness = 0.1f;
+
+        MaterialButton buttonFinishPolygon = new MaterialButton
+        {
+            Text = "Finish Polygon",
+            Location = new Point(1250, 70),
+            Width = 170,
+            BackColor = Color.FromArgb(27, 34, 44),
+            ForeColor = Color.White
+        };
+        private MaterialButton buttonFinishLine = new MaterialButton
+        {
+            Text = "Finish Line",
+            Location = new Point(1250, 70),
+            Width = 170,
+            Visible = false,
+            BackColor = Color.FromArgb(27, 34, 44),
+            ForeColor = Color.White
+        };
+
         private int level_id;
         
         private DoubleBufferedPanel canvas;
@@ -60,6 +110,8 @@ namespace f_x
         private List<Body> balls = new List<Body>();
         private World world = new World(new Vector2(0, -98f));
         private List<List<Body>> graphBodies = new List<List<Body>>();
+        private List<Body> polys = new List<Body>();
+        private List<Body> lines = new List<Body>();
 
         // Control pentru funcții matematice
 
@@ -68,13 +120,12 @@ namespace f_x
         private List<string> functionExpressions = new List<string>();
         private MaterialListView listViewFunctions;
         private MaterialTextBox2 textBox1;
-
         public Game()
         {
             InitializeComponent();
+           
             this.Text = "Call of Coordinates";
 
-            
             this.WindowState = FormWindowState.Maximized;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = true;
@@ -98,7 +149,7 @@ namespace f_x
             this.Width = 800;
             this.Height = 600;
 
-            refreshTimer = new System.Windows.Forms.Timer { Interval = 16 }; // ~60 FPS
+            refreshTimer = new System.Windows.Forms.Timer { Interval = 16 };
             refreshTimer.Tick += (_, __) => canvas.Invalidate();
             refreshTimer.Tick += tick;
             refreshTimer.Start();
@@ -125,7 +176,9 @@ namespace f_x
             {
                 Hint = "Enter function (e.g., sin(x), sqrt(x), etc.)",
                 Location = new Point(10, 70),
-                Width = 300
+                Width = 300,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
             };
             textBox1.TextChanged += TextBox1_TextChanged;
             this.Controls.Add(textBox1);
@@ -135,7 +188,9 @@ namespace f_x
             {
                 Text = "Add Function",
                 Location = new Point(320, 70),
-                Width = 150
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
             };
             buttonAdd.Click += buttonAddFunction_Click;
             this.Controls.Add(buttonAdd);
@@ -146,30 +201,98 @@ namespace f_x
             {
                 Text = "Back",
                 Location = new Point(1850, 70),
-                Width = 150
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
             };
             buttonBack.Click += buttonBackFunction_Click;
             this.Controls.Add(buttonBack);
             buttonBack.BringToFront();
+
+            buttonNextLevel = new MaterialButton
+            {
+                Text = ">",
+                Location = new Point(1075, 70),
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
+            };
+            buttonNextLevel.Click += buttonNextLevelFunction_Click;
+            this.Controls.Add(buttonNextLevel);
+            buttonNextLevel.BringToFront();
+            
+            levelPanel = new Panel
+            {
+                Size = new Size(160, 50),
+                BackColor = Color.FromArgb(30, 30, 30),
+                BorderStyle = BorderStyle.FixedSingle,
+                Location = new Point(900, 70),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left
+            };
+
+            levelLabel = new Label
+            {
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            levelPanel.Controls.Add(levelLabel);
+            this.Controls.Add(levelPanel);
+            levelPanel.BringToFront();
+            levelLabel.Text = $"LEVEL {level_id}";
+            levelPanel.Visible = true;
+
+
+
+            buttonPreviousLevel = new MaterialButton
+            {
+                Text = "<",
+                Location = new Point(820, 70),
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
+            };
+            buttonPreviousLevel.Click += buttonPreviousLevelFunction_Click;
+            this.Controls.Add(buttonPreviousLevel);
+            buttonPreviousLevel.BringToFront();
 
 
             MaterialButton buttonStart = new MaterialButton
             {
                 Text = "Start",
                 Location = new Point(10, 340),
-                Width = 150
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
             };
             buttonStart.Click += buttonStart_Click;
             this.Controls.Add(buttonStart);
             buttonStart.BringToFront();
 
+            MaterialButton buttonStop= new MaterialButton
+            {
+                Text = "Stop",
+                Location = new Point(10, 380),
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
+            };
+            buttonStop.Click += buttonStop_Click;
+            this.Controls.Add(buttonStop);
+            buttonStop.BringToFront();
+
 
 
             MaterialButton buttonClearAll = new MaterialButton
             {
-                Text = "Clear All",
+                Text = "Clear Functions List",
                 Location = new Point(320, 130),
-                Width = 150
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
             };
             buttonClearAll.Click += buttonClearAll_Click;
             this.Controls.Add(buttonClearAll);
@@ -179,7 +302,9 @@ namespace f_x
             {
                 Text = "Delete Function",
                 Location = new Point(320, 190),
-                Width = 150
+                Width = 150,
+                BackColor = Color.FromArgb(27, 34, 44),
+                ForeColor = Color.White
             };
             buttonDeleteFunction.Click += buttonDeleteFunction_Click;
             this.Controls.Add(buttonDeleteFunction);
@@ -194,8 +319,8 @@ namespace f_x
                 BorderStyle = BorderStyle.None,
                 Width = 300,
                 HeaderStyle = ColumnHeaderStyle.None,
-                Location = new Point(10, 130), // adjust as needed
-                Height = 200,                  // adjust as needed
+                Location = new Point(10, 130),
+                Height = 200,
             };
 
             listViewFunctions.Columns.Add("Functions", -2, HorizontalAlignment.Left);
@@ -205,6 +330,8 @@ namespace f_x
 
             this.KeyPreview = true;
             this.KeyDown += textBoxFunction_KeyDown;
+
+            
         }
 
         // Încărcare imagini din resursele assembly-ului
@@ -224,6 +351,7 @@ namespace f_x
 
         private void Canvas_Paint(object sender, PaintEventArgs e)
         {
+          
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             int w = canvas.Width;
@@ -319,6 +447,34 @@ namespace f_x
             foreach (var obj in staticLine)
                 obj.Tick(g);
 
+          
+
+            // Desenează poligonul temporar (preview)
+            if (tempPolygonPoints.Count >= 1)
+            {
+                PointF[] tempPoints = StaticPolygon.ConvertToPoints(tempPolygonPoints);
+
+                // Linii între puncte
+                if (tempPoints.Length >= 2)
+                    g.FillPolygon(new SolidBrush(Color.FromArgb(100, 0, 0, 0)), tempPoints);
+
+                // Puncte
+                foreach (var pt in tempPoints)
+                    g.FillEllipse(Brushes.Red, pt.X - 0.1f, pt.Y - 0.1f , 0.2f, 0.2f);
+            }
+
+            if (tempLinePoints.Count >= 1)
+            {
+                PointF[] temp = tempLinePoints.Select(p => new PointF(p.X, p.Y)).ToArray();
+
+                // Linii
+                if (temp.Length >= 2)
+                    g.DrawLines(new Pen(Brushes.Black, lineThicknessSlider.Value / 1000f), temp);
+
+                // Puncte
+                foreach (var pt in temp)
+                    g.FillEllipse(Brushes.Blue, pt.X - 0.1f, pt.Y - 0.1f, 0.2f, 0.2f);
+            }
 
         }
 
@@ -344,8 +500,12 @@ namespace f_x
 
             if (star_count == 0 && free_mode == false)
             {
+                LevelCompleted = true;
                 ShowWinScreen();
             }
+
+            DeleteMarkedObjects();
+
             world.Step(1f / 60f);
         }
 
@@ -393,44 +553,73 @@ namespace f_x
 
         // Generare puncte pentru funcții implicite
 
-        private void GeneratePoints(Func<float, float, float> implicitFunc, int index,  float Xmin,  float Xmax, float Ymin,  float Ymax)
+        private void GeneratePoints(Func<float, float, float> implicitFunc, int index, float Xmin, float Xmax, float Ymin, float Ymax)
         {
-            GenerateFunctionPointsDynamic(implicitFunc, zoom, cameraPos, index,  Xmin,  Xmax,  Ymin,  Ymax);
-            RebuildGraphCollisions(index); 
+            GenerateFunctionPointsDynamic(implicitFunc, zoom, cameraPos, index, Xmin, Xmax, Ymin, Ymax);
+            RebuildGraphCollisions(index);
         }
 
-        // Algoritm de generare a contururilor (Marching Squares)
-
-        private void GenerateFunctionPointsDynamic(Func<float, float, float> implicitFunc, float zoom, PointF cameraPosition, int index, float minX, float maxX,  float minY,  float maxY)
+        private void GenerateFunctionPointsDynamic(Func<float, float, float> implicitFunc, float zoom, PointF cameraPosition, int index, float minX, float maxX, float minY, float maxY)
         {
-            int resolution = 1000;  
+            int resolution = 1000;
+            resolution = Math.Max(100, Math.Min(2000, (int)(resolution * Math.Sqrt(zoom))));
 
             float stepX = (maxX - minX) / (resolution - 1);
             float stepY = (maxY - minY) / (resolution - 1);
 
-            // Creare grid de valori
-
             float[,] grid = new float[resolution, resolution];
+
             for (int i = 0; i < resolution; i++)
             {
                 float x = minX + i * stepX;
                 for (int j = 0; j < resolution; j++)
                 {
                     float y = minY + j * stepY;
-                    grid[i, j] = implicitFunc(x, y);
+                    try
+                    {
+                        float value = implicitFunc(x, y);
+                        grid[i, j] = float.IsInfinity(value) ? float.MaxValue * Math.Sign(value) : value;
+                    }
+                    catch
+                    {
+                        grid[i, j] = float.MaxValue;
+                    }
                 }
             }
 
-            // Generare contururi cu algoritmul Marching Squares
-
             var contours = MarchingSquares.GenerateContours(grid, 0f, minX, minY, stepX, stepY);
 
-            // Adăugare contururi în lista de puncte
+            // Filter contours by length
+            var filteredContours = contours.Where(c =>
+            {
+                if (c.Length < 2) return false;
 
-            foreach (var contour in contours)
+                float totalLength = 0;
+                for (int i = 1; i < c.Length; i++)
+                {
+                    totalLength += Distance(c[i - 1], c[i]);
+                }
+
+                float minXc = c.Min(p => p.X);
+                float maxXc = c.Max(p => p.X);
+                float minYc = c.Min(p => p.Y);
+                float maxYc = c.Max(p => p.Y);
+                float diag = Distance(new PointF(minXc, minYc), new PointF(maxXc, maxYc));
+
+                return totalLength < 4 * diag;
+            }).ToList();
+
+            PointList[index].Clear();
+            foreach (var contour in filteredContours)
             {
                 PointList[index].Add(contour);
             }
+        }
+        private float Distance(PointF a, PointF b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            return (float)Math.Sqrt(dx * dx + dy * dy);
         }
 
         private void DrawRelocatedAxisLabels(Graphics g, int w, int h, float left, float right, float top, float bottom)
@@ -492,7 +681,6 @@ namespace f_x
             }
         }
 
-
         private void DrawGrid(Graphics g, int w, int h)
         {
             float step = GetGridStep();
@@ -523,7 +711,7 @@ namespace f_x
                 foreach (var p in labelX)
                 {
                     PointF sp = WorldToScreen(p);
-                    if (sp.X >= 0 && sp.X <= w && sp.Y >= 0 && sp.Y <= h) // draw only visible labels
+                    if (sp.X >= 0 && sp.X <= w && sp.Y >= 0 && sp.Y <= h)
                     {
                         string label = Math.Abs(p.X % 1) < 1e-8 ? ((int)p.X).ToString() : p.X.ToString("0." + new string('#', precision));
                         g.DrawString(label, gridFont, gridBrush, sp.X - 10, sp.Y + 5);
@@ -533,7 +721,7 @@ namespace f_x
                 foreach (var p in labelY)
                 {
                     PointF sp = WorldToScreen(p);
-                    if (sp.X >= 0 && sp.X <= w && sp.Y >= 0 && sp.Y <= h) // draw only visible labels
+                    if (sp.X >= 0 && sp.X <= w && sp.Y >= 0 && sp.Y <= h)
                     {
                         string label = Math.Abs(p.Y % 1) < 1e-8 ? ((int)p.Y).ToString() : p.Y.ToString("0." + new string('#', precision));
                         g.DrawString(label, gridFont, gridBrush, sp.X + 5, sp.Y - 7);
@@ -565,8 +753,6 @@ namespace f_x
                 g.DrawLine(majorPen, x, bottom, x, top);
         }
 
-
-
         private float GetGridStep()
         {
             float targetPx = 40f;
@@ -593,10 +779,52 @@ namespace f_x
             else if (e.Button == MouseButtons.Right && free_mode == true)
             {
                 var worldPos = ScreenToWorld(e.Location);
-                generators.Add(new BallGenerator(world, new Vector2(worldPos.X, worldPos.Y),1,  gen_im, balls));
+
+                switch (currentSpawnMode)
+                {
+                    case SpawnMode.Generator:
+                        generators.Add(new BallGenerator(world, new Vector2(worldPos.X, worldPos.Y), GenSizeSlider.Value / 100f + 0.1f, gen_im, balls));
+                        break;
+                    case SpawnMode.Star:
+                        float size = StarSizeSlider.Value / 100f + 0.5f;
+                        stars.Add(new star(world, new Vector2(worldPos.X - size / 2, worldPos.Y - size / 2 ), size, star_im, balls));
+                        break;
+                    case SpawnMode.Poligon:
+                         tempPolygonPoints.Add(new Vector2(worldPos.X, worldPos.Y));
+                            break;
+                    case SpawnMode.Line:          
+                        tempLinePoints.Add(new Vector2(worldPos.X, worldPos.Y));
+                        break;
+                    case SpawnMode.Delete:
+                        Vector2 clickPos = new Vector2(worldPos.X, worldPos.Y);
+
+                        foreach (var star in stars)
+                            if (star.ContainsPoint(clickPos))
+                                star.ToDelete = true;
+
+                        foreach (var gen in generators)
+                            if (gen.ContainsPoint(clickPos))
+                                gen.ToDelete = true;
+
+                        foreach (var poly in staticPolygons)
+                            if (poly.ContainsPoint(clickPos))
+                                poly.ToDelete = true;
+
+                        foreach (var line in staticLine)
+                            if (line.ContainsPoint(clickPos, 0.5f))
+                                line.ToDelete = true;
+
+                        foreach (var ball in balls)
+                            if (Vector2.Distance(ball.Position, clickPos) < 0.2f)
+                                ball.UserData = true;
+                        break;
+
+                    default:
+                        
+                        break;
+                }
             }
         }
-
         private void Canvas_MouseMove(object sender, MouseEventArgs e)
         {
             if (isDragging)
@@ -659,7 +887,6 @@ namespace f_x
             float y = -(screen.Y - canvas.Height / 2f) / zoom + cameraPos.Y;
             return new PointF(x, y);
         }
-       
 
         private void TextBox1_TextChanged(object sender, EventArgs e)
         {
@@ -670,15 +897,7 @@ namespace f_x
         private void TypingTimer_Tick(object sender, EventArgs e)
         {
             typingTimer.Stop();
-           
         }
-
-       
-
-
-        
-        
-
 
         private void buttonAddFunction_Click(object sender, EventArgs e)
         {
@@ -688,10 +907,7 @@ namespace f_x
         private void textBoxFunction_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
-            {
-
                 AddFunc();
-            }
         }
 
         // Logica pentru adăugarea funcțiilor
@@ -701,7 +917,6 @@ namespace f_x
             string expression = textBox1.Text.Trim();
             if (string.IsNullOrWhiteSpace(expression))
                 return;
-
             try
             {
                 Func<float,float,float> func;
@@ -775,13 +990,12 @@ namespace f_x
                     functions.Add(func);
                     functionExpressions.Add(expression);
                     int functionIndex = listViewFunctions.Items.Count + 1;
-                    if(implicit_function)
+                    if (implicit_function)
                     {
                         listViewFunctions.Items.Add(new ListViewItem($"f{functionIndex}(x,y) = {expression}"));
                     }
                     else
                     {
-
                         listViewFunctions.Items.Add(new ListViewItem($"f{functionIndex}(x) = {expression}"));
                     }
 
@@ -791,7 +1005,6 @@ namespace f_x
                     graphBodies.Add(new List<Body>());
                     GeneratePoints(func, functions.Count - 1,  Xmin,  Xmax, Ymin,  Ymax);
                 }
-
                 textBox1.Clear();
                 listViewFunctions.SelectedIndices.Clear(); // Clear selection after edit
             }
@@ -822,7 +1035,6 @@ namespace f_x
             listViewFunctions.Items.Clear();
 
         }
-
         private void ListViewFunctions_SelectedIndexChanged(object sender, EventArgs e)
         {
             int selectedIndex = listViewFunctions.SelectedIndices.Count > 0 ? listViewFunctions.SelectedIndices[0] : -1;
@@ -862,7 +1074,7 @@ namespace f_x
         {
             foreach (var ball in balls)
             {
-                world.RemoveBody(ball); // sau alt cleanup necesar
+                world.RemoveBody(ball);
             }
             balls.Clear();
             balls.TrimExcess();
@@ -876,7 +1088,24 @@ namespace f_x
                 gen.start = true;
             }
         }
-       
+        public void buttonStop_Click(object sender, EventArgs e)
+        {
+            foreach (var gen in generators)
+            {
+                gen.Stop(); 
+            }
+            foreach (var ball in balls)
+            {
+                world.RemoveBody(ball); 
+            }
+            balls.Clear();
+            balls.TrimExcess();
+            foreach (var star in stars)
+            {
+                star.isActive = true;
+            }
+        }
+
         private void ClearList(int index)
         {
             if (index >= 0 && index < PointList.Count)
@@ -889,35 +1118,81 @@ namespace f_x
                 graphBodies[index].Clear();
             }
         }
+     
         public Game(Level level) : this() // apelează constructorul implicit
         {
             LoadLevelFromData(level);
+            if (free_mode == true)
+                freemode();
         }
         private void LoadLevelFromData(Level level)
         {
             staticPolygons.Clear();
+            foreach(var ball in balls)
+                world.RemoveBody(ball);
+            balls.Clear();
             staticLine.Clear();
             stars.Clear();
             generators.Clear();
-            foreach(var pos in level.GenPositions)
+            foreach (var poly in polys)
+                world.RemoveBody(poly);
+            polys.Clear();
+            foreach (var line in lines)
+                world.RemoveBody(line);
+            lines.Clear();
+            foreach (var pos in level.GenPositions)
                 generators.Add(new BallGenerator(world, pos, 1, gen_im, balls));
             foreach (var pos in level.StarPositions)
-                stars.Add(new star(world, pos, 1, star_im, balls));
+            {
+                var star = new star(world, pos, 1, star_im, balls);
+              stars.Add(star);
+                star.StarCollected += () => StarsCollected++;
+            }
+                
 
             foreach (var line in level.Lines)
-                staticLine.Add(new Staticline(world, line, balls));
+                staticLine.Add(new Staticline(world, line, balls, lines, 0.1f));
 
             foreach (var polygon in level.Polygons)
-                staticPolygons.Add(new StaticPolygon(world, polygon, balls));
+            {
+                var convexParts = PolygonUtils.TriangulatePolygon(polygon);
+
+                foreach (var convexPoly in convexParts)
+                {
+                    staticPolygons.Add(new StaticPolygon(world, convexPoly, balls, polys));
+                }
+            }
+
             free_mode = level.free_mode;
             level_id = level.level_id;
+            levelLabel.Text = $"LEVEL {level_id}";
+            if (level_id == 1)
+                buttonPreviousLevel.Visible = false;
+            else
+                buttonPreviousLevel.Visible = true;
             Graph_color = level.Graph_color;
             Ball_color = level.Ball_color;
+            stats = level.stats;
         }
 
+        private Level? LoadLevelById(int id)
+        {
+            if (FormMain.levels != null && FormMain.levels.ContainsKey(id))
+                return FormMain.levels[id];
+            return null;
+        }
+        private void buttonNextLevelFunction_Click(object sender, EventArgs e)
+        {
+            HideWinScreen();
+            LoadNextLevel();
+        }
+        private void buttonPreviousLevelFunction_Click(object sender, EventArgs e)
+        {
+            LoadPreviousLevel();
+        }
         private void buttonBackFunction_Click(object sender, EventArgs e)
         {
-                this.Close();
+            this.Close();
         }
 
         // Compilare expresie matematică în funcție
@@ -1103,24 +1378,379 @@ namespace f_x
 
         private void ShowWinScreen()
         {
-            var winLabel = new Label
+            if (winLabel != null)
+                return;
+
+            winLabel = new Label
             {
                 Text = "LEVEL COMPLETE",
-                ForeColor = Color.Gold,
+                ForeColor = Color.White,
                 Font = new Font("Segoe UI", 28, FontStyle.Bold),
                 AutoSize = false,
-                Size = new Size(400, 60),
+                Size = new Size(400, 45),
                 TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.CadetBlue
+                BackColor = Color.Black,
+                BorderStyle = BorderStyle.FixedSingle
             };
 
-            // Position the label in the center
-            winLabel.Location = new Point((this.ClientSize.Width - winLabel.Width) / 2, 10);
-
+            winLabel.Location = new Point((this.ClientSize.Width - winLabel.Width) / 2, 15);
             Controls.Add(winLabel);
-
-            // Optional: Bring to front in case of overlapping controls
             winLabel.BringToFront();
+        }
+
+        private void HideWinScreen()
+        {
+            try
+            {
+                if (winLabel != null)
+                {
+                    this.Controls.Remove(winLabel);
+                    winLabel.Dispose();
+                    winLabel = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("error" + ex.Message);
+            }
+        }
+
+        private void LoadNextLevel()
+        {
+            int nextLevelId = level_id + 1;
+            levelLabel.Text = "LEVEL " + nextLevelId.ToString();
+
+            HideWinScreen();
+
+            Level nextLevel = LoadLevelById(nextLevelId);
+            if (nextLevel != null)
+            {
+                LoadLevelFromData(nextLevel);
+            }
+            else
+            {
+                MessageBox.Show("More levels coming soon!");
+            }
+        }
+        private void LoadPreviousLevel()
+        {
+            // Logic to load the next level  
+            // Example:  
+            int nextLevelId = level_id - 1;
+            levelLabel.Text = "LEVEL " + nextLevelId.ToString();
+            if (level_id == 1)
+                buttonPreviousLevel.Visible = false;
+            else
+                buttonPreviousLevel.Visible = true;
+            Level nextLevel = LoadLevelById(nextLevelId);
+            if (nextLevel != null)
+            {
+                LoadLevelFromData(nextLevel);
+                HideWinScreen();
+            }
+        }
+        private void freemode()
+        {
+            buttonNextLevel.Visible = false; buttonPreviousLevel.Visible = false; levelPanel.Visible = false;
+             MaterialButton buttonDelete2 = new MaterialButton
+            {
+                Text = "Delete",
+                Location = new Point(750, 70),
+                Width = 150
+            };
+            buttonDelete2.Click += buttonDelete2Function_Click;
+            this.Controls.Add(buttonDelete2);
+            buttonDelete2.BringToFront();
+
+            MaterialButton buttonGenerator = new MaterialButton
+            {
+                Text = "Generator",
+                Location = new Point(850, 70),
+                Width = 150
+            };
+            buttonGenerator.Click += buttonGeneratorFunction_Click;
+            this.Controls.Add(buttonGenerator);
+            buttonGenerator.BringToFront();
+
+            MaterialButton buttonStar = new MaterialButton
+            {
+                Text = "Star",
+                Location = new Point(970, 70),
+                Width = 150
+            };
+            buttonStar.Click += buttonStarFunction_Click;
+            this.Controls.Add(buttonStar);
+            buttonStar.BringToFront();
+
+            MaterialButton buttonPoligon = new MaterialButton
+            {
+                Text = "Polygon",
+                Location = new Point(1050, 70),
+                Width = 150
+            };
+            buttonPoligon.Click += buttonPoligonFunction_Click;
+            this.Controls.Add(buttonPoligon);
+            buttonPoligon.BringToFront();
+
+            MaterialButton buttonLine = new MaterialButton
+            {
+                Text = "Line",
+                Location = new Point(1150, 70),
+                Width = 150
+            };
+            buttonLine.Click += buttonLineFunction_Click;
+            this.Controls.Add(buttonLine);
+            buttonLine.BringToFront();
+
+            MaterialButton buttonClearAll = new MaterialButton
+            {
+                Text = "Clear All",
+                Location = new Point(1820, 120),
+                Width = 150
+            };
+            buttonClearAll.Click += buttonClearAllFunction_Click;
+            this.Controls.Add(buttonClearAll);
+            buttonClearAll.BringToFront();
+
+
+
+            buttonFinishPolygon.Click += FinishPolygonButton_Click;
+            this.Controls.Add(buttonFinishPolygon);
+            buttonFinishPolygon.BringToFront();
+            buttonFinishPolygon.Visible = false;
+
+            buttonFinishLine.Click += FinishLineButton_Click;
+            this.Controls.Add(buttonFinishLine);
+            buttonFinishLine.BringToFront();
+            buttonFinishLine.Visible = false;
+
+
+            LinesliderPanel = new Panel
+            {
+                Location = new Point(1365, 65),
+                Width = 360,
+                Height = 60,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White,
+                Visible = false
+            };
+
+            lineThicknessSlider = new MaterialSlider
+            {
+                Location = new Point(5, 15),
+                Width = 350,
+                Text = "Line Thickness",
+                BackColor = Color.White
+            };
+
+            LinesliderPanel.Controls.Add(lineThicknessSlider);
+            this.Controls.Add(LinesliderPanel);
+            LinesliderPanel.BringToFront();
+
+
+
+            GenSliderPanel = new Panel
+            {
+                Location = new Point(1365, 65),
+                Width = 360,
+                Height = 60,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White,
+                Visible = false
+            };
+
+            GenSizeSlider = new MaterialSlider
+            {
+                Location = new Point(5, 15),
+                Width = 350,
+                Text = "Size",
+                BackColor = Color.White
+            };
+
+            GenSliderPanel.Controls.Add(GenSizeSlider);
+            this.Controls.Add(GenSliderPanel);
+            GenSliderPanel.BringToFront();
+
+            StarSliderPanel = new Panel
+            {
+                Location = new Point(1365, 65),
+                Width = 360,
+                Height = 60,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White,
+                Visible = false
+            };
+
+            StarSizeSlider = new MaterialSlider
+            {
+                Location = new Point(5, 15),
+                Width = 350,
+                Text = "Size",
+                BackColor = Color.White
+            };
+
+            StarSliderPanel.Controls.Add(StarSizeSlider);
+            this.Controls.Add(StarSliderPanel);
+            StarSliderPanel.BringToFront();
+        }
+        private void buttonDelete2Function_Click(object sender, EventArgs e)
+        {
+            buttonFinishPolygon.Visible = false;
+            buttonFinishLine.Visible = false;
+            LinesliderPanel.Visible = false;
+            GenSliderPanel.Visible = false;
+            StarSliderPanel.Visible = false;
+            currentSpawnMode = SpawnMode.Delete;
+            tempPolygonPoints.Clear();
+            tempLinePoints.Clear();
+        }
+
+        private void buttonClearAllFunction_Click(object sender, EventArgs e)
+        {
+            balls.ForEach(b => b.UserData = true);
+            stars.ForEach(s => s.ToDelete = true);
+            generators.ForEach(g => g.ToDelete = true);
+            staticPolygons.ForEach(p => p.ToDelete = true);
+            staticLine.ForEach(l => l.ToDelete = true);
+
+
+        }
+
+        private void buttonGeneratorFunction_Click(object sender, EventArgs e)
+        {
+            buttonFinishPolygon.Visible = false;
+            buttonFinishLine.Visible = false;
+            LinesliderPanel.Visible = false;
+            GenSliderPanel.Visible = true;
+            StarSliderPanel.Visible = false;
+            currentSpawnMode = SpawnMode.Generator;
+            tempPolygonPoints.Clear();
+            tempLinePoints.Clear();
+        }
+
+        private void buttonStarFunction_Click(object sender, EventArgs e)
+        {
+            buttonFinishPolygon.Visible = false;
+            buttonFinishLine.Visible = false;
+            LinesliderPanel.Visible = false;
+            GenSliderPanel.Visible = false;
+            StarSliderPanel.Visible = true;
+            currentSpawnMode = SpawnMode.Star;
+            tempPolygonPoints.Clear();
+            tempLinePoints.Clear();
+        }
+
+        private void buttonPoligonFunction_Click(object sender, EventArgs e)
+        {
+            buttonFinishPolygon.Visible = true;
+            buttonFinishLine.Visible = false;
+            LinesliderPanel.Visible = false;
+            GenSliderPanel.Visible = false;
+            StarSliderPanel.Visible = false;
+            currentSpawnMode = SpawnMode.Poligon;
+            tempLinePoints.Clear();
+        }
+
+        private void buttonLineFunction_Click(object sender, EventArgs e)
+        {
+            buttonFinishPolygon.Visible = false;
+            buttonFinishLine.Visible = true;
+            LinesliderPanel.Visible = true;
+            GenSliderPanel.Visible = false;
+            StarSliderPanel.Visible = false;
+            currentSpawnMode = SpawnMode.Line;
+            tempPolygonPoints.Clear();
+            
+        }
+
+        private void FinishPolygonButton_Click(object sender, EventArgs e)
+        {
+            if (tempPolygonPoints.Count >= 3)
+            {
+                // Triangulăm poligonul neconvex în poligoane convexe
+                var convexParts = PolygonUtils.TriangulatePolygon(tempPolygonPoints);
+
+                foreach (var convexPoly in convexParts)
+                {
+                    var newPolygon = new StaticPolygon(world, convexPoly, balls, polys);
+                    staticPolygons.Add(newPolygon);
+                }
+            }
+
+            tempPolygonPoints.Clear();
+        }
+
+
+        private void FinishLineButton_Click(object sender, EventArgs e)
+        {
+            if (tempLinePoints.Count >= 2)
+            {
+               Thickness = lineThicknessSlider.Value;
+                var newLine = new Staticline(world, new List<Vector2>(tempLinePoints), balls, lines, lineThicknessSlider.Value / 1000f);
+                staticLine.Add(newLine);
+            }
+            
+            tempLinePoints.Clear();
+        }
+
+        private void DeleteMarkedObjects()
+        {
+            // Șterge bilele marcate
+            for (int i = balls.Count - 1; i >= 0; i--)
+            {
+                Body ball = balls[i];
+                if ((bool?)ball.UserData == true) // dacă ai setat UserData = true când vrei să le ștergi
+                {
+                    world.RemoveBody(ball);
+                    balls.RemoveAt(i);
+                }
+            }
+
+            // Șterge stelele marcate
+            for (int i = stars.Count - 1; i >= 0; i--)
+            {
+                if (stars[i].ToDelete)
+                {
+                    stars.RemoveAt(i);
+                }
+            }
+
+            // Șterge generatoarele
+            for (int i = generators.Count - 1; i >= 0; i--)
+            {
+                if (generators[i].ToDelete)
+                {
+                    generators.RemoveAt(i);
+                }
+            }
+
+            // Șterge poligoanele statice
+            for (int i = staticPolygons.Count - 1; i >= 0; i--)
+            {
+                if (staticPolygons[i].ToDelete)
+                {
+                    if (polys.Count > i)
+                    {
+                        world.RemoveBody(polys[i]);
+                        polys.RemoveAt(i);
+                    }
+                    staticPolygons.RemoveAt(i);
+                }
+            }
+
+            // Șterge liniile statice
+            for (int i = staticLine.Count - 1; i >= 0; i--)
+            {
+                if (staticLine[i].ToDelete)
+                {
+                    if (lines.Count > i)
+                    {
+                        world.RemoveBody(lines[i]);
+                        lines.RemoveAt(i);
+                    }
+                    staticLine.RemoveAt(i);
+                }
+            }
         }
     }
 }

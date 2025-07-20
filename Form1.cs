@@ -3,23 +3,24 @@ using System.Reflection;
 using Label = System.Windows.Forms.Label;
 using Microsoft.Xna.Framework;
 using f_x;
-
+using System.Text.Json;
+using MaterialSkin;
+using System.Diagnostics;
+using Microsoft.VisualBasic.Devices;
 
 namespace cocstart
 {
+
     public partial class FormMain : Form
     {
-        
         private TrackBar volumeSlider;
 
         private enum AppState { MainMenu, Settings, Themes, Stats }
         private AppState currentState = AppState.MainMenu;
 
-        // Menu system variables
         private List<Control> mainMenuControls = new List<Control>();
 
-        private Dictionary<int, Level> levels;
-
+        public static Dictionary<int, Level> levels;
 
         private Size originalPlayButtonSize;
         private Size originalFreeModeButtonSize;
@@ -39,28 +40,41 @@ namespace cocstart
         private Panel statsPanel;
         private Panel levelPanel;
 
-        
         private Panel infoPanel;
         private FlowLayoutPanel infoContentPanel;
-        
 
-        
         private Color Graph_color = Color.FromArgb(5, 100, 150);
         private Color Ball_color = Color.FromArgb(22, 225, 200);
+
+        private string filePath = "game_stats.json";
+        private GameStats stats = new GameStats();
+        private Stopwatch playTimer = new Stopwatch();
+
 
         public FormMain()
         {
             InitializeComponent();
             this.DoubleBuffered = true;
             this.WindowState = FormWindowState.Normal;
-            
+            LoadStats();
+            playTimer.Start();
 
-            this.KeyPreview = true; // This is important to allow the form to see key events first
+            this.KeyPreview = true;
             this.KeyDown += Form1_KeyDown;
 
             togglemusicon.Hide();
+            this.FormClosing += Form1_FormClosing;
 
-            // Store original sizes
+            title.Font = new Font("Bahnschrift", (int)(this.ClientSize.Height * 0.07), FontStyle.Bold);
+            playbutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.04));
+            playbutton.Size = new Size((int)(this.ClientSize.Width * 0.3), (int)(this.ClientSize.Height * 0.1));
+            freemodebutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.03));
+            freemodebutton.Size = new Size((int)(this.ClientSize.Width * 0.25), (int)(this.ClientSize.Height * 0.075));
+            themebutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.03));
+            themebutton.Size = new Size((int)(this.ClientSize.Width * 0.25), (int)(this.ClientSize.Height * 0.075));
+            statsbutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.03));
+            statsbutton.Size = new Size((int)(this.ClientSize.Width * 0.25), (int)(this.ClientSize.Height * 0.075));
+
             originalPlayButtonSize = playbutton.Size;
             originalFreeModeButtonSize = freemodebutton.Size;
             originalThemeButtonSize = themebutton.Size;
@@ -68,8 +82,6 @@ namespace cocstart
             originalQuitSize = quit.Size;
             originalGearSize = gear.Size;
             originalToggleMusicSize = togglemusicoff.Size;
-
-            SetupHoverEffects();
 
             playbutton.Cursor = Cursors.Hand;
             freemodebutton.Cursor = Cursors.Hand;
@@ -82,11 +94,11 @@ namespace cocstart
 
             PositionControls();
 
+            SetupHoverEffects();
+
             InitializeMenuSystem();
 
             InitializeMusicPlayer();
-
-
 
             InitializeInfoMenu();
 
@@ -98,6 +110,7 @@ namespace cocstart
                 free_mode = true,
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
 
             };
             levels[1] = new Level
@@ -107,7 +120,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(5, 5) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
-
+                stats = stats
             };
 
             levels[2] = new Level
@@ -117,6 +130,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(7, 6.5f), new Vector2(11, 4), new Vector2(3, 4) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[3] = new Level
@@ -126,6 +140,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(4, 2f), new Vector2(-9, -1), new Vector2(-2, -5) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[4] = new Level
@@ -135,6 +150,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(-3, -3.5f), new Vector2(6, -2), new Vector2(0, 0), new Vector2(-3, 5) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[5] = new Level
@@ -144,6 +160,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(0, -7), new Vector2(11, 5), new Vector2(7, -12) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[6] = new Level
@@ -153,6 +170,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(2, 1.5f), new Vector2(0, -4), new Vector2(-6, -3) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[7] = new Level
@@ -162,6 +180,7 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(-3, 0), new Vector2(-2, -1.5f), new Vector2(1, -3) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[8] = new Level
@@ -169,9 +188,10 @@ namespace cocstart
                 level_id = 8,
                 GenPositions = new List<Vector2> { new Vector2(0, 5) },
                 StarPositions = new List<Vector2> { new Vector2(-0.5f, 0.2f), new Vector2(0.5f, 0.2f), new Vector2(-1.5f, 0.2f), new Vector2(1.5f, 0.2f), new Vector2(-2.5f, 0.2f) },
-                Polygons = new List<List<Vector2>> { new List<Vector2> { new Vector2(0, 4), new Vector2(3, 1) , new Vector2(-3, 1)} },
+                Polygons = new List<List<Vector2>> { new List<Vector2> { new Vector2(0, 4), new Vector2(3, 1), new Vector2(-3, 1) } },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
             levels[9] = new Level
             {
@@ -180,24 +200,124 @@ namespace cocstart
                 StarPositions = new List<Vector2> { new Vector2(-3, -1.5f), new Vector2(-5, -4), new Vector2(-2, -8) },
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
             };
 
             levels[10] = new Level
             {
                 level_id = 10,
-                GenPositions = new List<Vector2> { new Vector2(6, 14), new Vector2(-6, 14), new Vector2(-12, 8), new Vector2(12, 8) },
+                GenPositions = new List<Vector2> { new Vector2(-12, 8), new Vector2(12, 8) },
                 StarPositions = new List<Vector2> { new Vector2(-13, -16), new Vector2(-9, -6), new Vector2(-5, -16),
                                         new Vector2(12, -16), new Vector2(8, -6), new Vector2(4, -16),
-                                        new Vector2(-7f, -10), new Vector2(-0.5f, -10), new Vector2(6, -10)},
+                                        new Vector2(-7f, -10), new Vector2(6, -10)},
                 Graph_color = Graph_color,
                 Ball_color = Ball_color,
+                stats = stats
+            };
+
+            levels[11] = new Level
+            {
+                level_id = 11,
+                GenPositions = new List<Vector2> { new Vector2(0, 10) },
+                StarPositions = new List<Vector2> { new Vector2(3.5f, -3), new Vector2(-5.5f, -4), new Vector2(-5.5f, 3) },
+                Lines = new List<List<Vector2>> { new List<Vector2> { new Vector2(-1, 8), new Vector2(1, 5) } },
+                Graph_color = Graph_color,
+                Ball_color = Ball_color,
+                stats = stats
+            };
+
+            levels[12] = new Level
+            {
+                level_id = 12,
+                GenPositions = new List<Vector2> { new Vector2(-8, 10) },
+                StarPositions = new List<Vector2> { new Vector2(1, 1), new Vector2(4, -4), new Vector2(-6, -6) },
+                Lines = new List<List<Vector2>> { new List<Vector2> { new Vector2(-3, 2), new Vector2(-3, -4) } },
+                Graph_color = Graph_color,
+                Ball_color = Ball_color,
+                stats = stats
+            };
+
+            levels[13] = new Level
+            {
+                level_id = 13,
+                GenPositions = new List<Vector2> { new Vector2(0, 10) },
+                StarPositions = new List<Vector2> { new Vector2(-3, -1), new Vector2(3, -1), new Vector2(0, -5) },
+                Lines = new List<List<Vector2>> { new List<Vector2> { new Vector2(-3, 4), new Vector2(3, 2) } },
+                Graph_color = Graph_color,
+                Ball_color = Ball_color,
+                stats = stats
+            };
+
+            levels[14] = new Level
+            {
+                level_id = 14,
+                GenPositions = new List<Vector2> { new Vector2(-2, 12) },
+                StarPositions = new List<Vector2> { new Vector2(3, -4), new Vector2(-4, -6), new Vector2(0, -5) },
+                Lines = new List<List<Vector2>> { new List<Vector2> { new Vector2(0, 8), new Vector2(0, -7) } },
+                Polygons = new List<List<Vector2>> { new List<Vector2> { new Vector2(-6, 6), new Vector2(-6, 0), new Vector2(0, 0), new Vector2(0, 8) } },
+                Graph_color = Graph_color,
+                Ball_color = Ball_color,
+                stats = stats
+            };
+
+            levels[15] = new Level
+            {
+                level_id = 15,
+                GenPositions = new List<Vector2> { new Vector2(12, 17) },
+                StarPositions = new List<Vector2> { new Vector2(11.5f, 10), new Vector2(11, -5), new Vector2(-1, -6), new Vector2(-5, 9), new Vector2(-4, 5) },
+                Lines = new List<List<Vector2>> { new List<Vector2> { new Vector2(0, 20), new Vector2(0, -6) },
+                                                new List<Vector2> { new Vector2(0, 6), new Vector2(-6, 4) },
+                                                new List<Vector2> { new Vector2(-1, -1), new Vector2(-1, -6) },
+                                                new List<Vector2> { new Vector2(-8, 10), new Vector2(-2, 8) } }, 
+                Graph_color = Graph_color,
+                Ball_color = Ball_color,
+                stats = stats
             };
         }
+
+        static bool CheckSystemRequirements()
+        {
+            // Check .NET version (approximate)
+            Version requiredDotNet = new Version(6, 0);
+            Version currentDotNet = Environment.Version;
+            if (currentDotNet < requiredDotNet)
+            {
+                MessageBox.Show($"This application requires .NET {requiredDotNet} or higher.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            // Check Windows version (Windows 10 = 10.0)
+            Version win10 = new Version(10, 0);
+            Version osVersion = Environment.OSVersion.Version;
+            if (osVersion < win10)
+            {
+                MessageBox.Show("This application requires Windows 10 or higher.", "Unsupported OS", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            // Check screen resolution
+            if (Screen.PrimaryScreen.Bounds.Width < 1280 || Screen.PrimaryScreen.Bounds.Height < 720)
+            {
+                MessageBox.Show("Screen resolution must be at least 1280x720.", "Display Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            // Check available RAM (in MB)
+            var memStatus = new ComputerInfo();
+            ulong totalRamMB = memStatus.TotalPhysicalMemory / (1024 * 1024);
+            if (totalRamMB < 4096)
+            {
+                MessageBox.Show("At least 4 GB of RAM is required.", "Insufficient Memory", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape)
             {
-                // Close whichever panel is currently open
                 if (infoPanel != null && infoPanel.Visible)
                 {
                     infoPanel.Visible = false;
@@ -213,8 +333,6 @@ namespace cocstart
             }
         }
 
-
-
         private void InitializeMenuSystem()
         {
             CreateSettingsMenu();
@@ -225,23 +343,20 @@ namespace cocstart
             mainMenuControls.AddRange(new Control[] {
                 playbutton, freemodebutton, themebutton, statsbutton,
                 quit, gear, togglemusicoff, togglemusicon, info,
-                pictureBox1, pictureBox2, pictureBox3, pictureBox4,
                 pictureBox5, pictureBox6, pictureBox7, pictureBox8
             });
         }
 
         private void InitializeInfoMenu()
         {
-            // Create main info panel (Chrome-like)
             infoPanel = new Panel();
-            infoPanel.Size = this.ClientSize;
+            infoPanel.Dock = DockStyle.Fill;
             infoPanel.BackColor = Color.FromArgb(27, 34, 44);
             infoPanel.Visible = false;
             infoPanel.Paint += (s, e) =>
             {
-                // Chrome-style header
                 e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(240, 255, 255)), 0, 0, infoPanel.Width, 40);
-                using (var textBrush = new SolidBrush(Color.FromArgb(27, 34, 44))) // This is currently dark
+                using (var textBrush = new SolidBrush(Color.FromArgb(27, 34, 44)))
                 {
                     e.Graphics.DrawString("Information",
                                         new Font("Arial", 12, FontStyle.Bold),
@@ -252,17 +367,20 @@ namespace cocstart
             this.Controls.Add(infoPanel);
             infoPanel.BringToFront();
 
-            // Create scrollable content area
             infoContentPanel = new FlowLayoutPanel();
             infoContentPanel.AutoScroll = true;
             infoContentPanel.FlowDirection = FlowDirection.TopDown;
             infoContentPanel.WrapContents = false;
-            infoContentPanel.Size = new Size(infoPanel.Width - 20, infoPanel.Height - 60);
             infoContentPanel.Location = new Point(10, 50);
+            infoContentPanel.Size = new Size(infoPanel.Width - 20, infoPanel.Height - 60);
             infoContentPanel.BackColor = Color.FromArgb(27, 34, 44);
             infoPanel.Controls.Add(infoContentPanel);
 
-            // Add sample content (replace with your actual info)
+            infoPanel.Resize += (s, e) =>
+            {
+                infoContentPanel.Size = new Size(infoPanel.Width - 20, infoPanel.Height - 60);
+            };
+
             AddInfoContent();
         }
 
@@ -277,18 +395,8 @@ namespace cocstart
             infoContentPanel.Controls.Add(titleLabel);
         }
 
-     
-
         private void AddInfoContent()
         {
-            /*
-            var title = new Label();
-            title.Text = "Game Information";
-            title.Font = new Font("Arial", 18, FontStyle.Bold);
-            title.ForeColor = Color.FromArgb(240, 255, 255);
-            title.AutoSize = true;
-            title.Margin = new Padding(10, 20, 10, 20);
-            infoContentPanel.Controls.Add(title);*/
 
             AddInfoTitle("How to play:");
             AddInfoSection("",
@@ -302,7 +410,17 @@ The score you get is higher if you use less functions. Try to use as little as p
             AddInfoSection("",
         @"Esc – Exit Menus
 Enter – Alternative to ”ADD FUNCTION” button
+Left Click (hold) - Pan the camera
+Scroll Wheel – Zoom in/out
 You can edit a function by selecting it from the list, making the changes you want, then clicking ”ADD FUNCTION” or pressing Enter");
+            AddInfoSection("", "");
+
+            AddInfoTitle("Free Mode:");
+            AddInfoSection("",
+        @"Free mode is an editor, where you can experiment with all of the elements included in the game
+Select an object by clicking on one of the buttons at the top of the screen, place them with right click. You can edit their size using the slider that appears after placing an object.
+Polygons are built by placing vertices in order, filling in the area in between when you click ”FINISH POLYGON”. The lines work the same way, joining the points you place with right click after clicking ”FINISH LINE”");
+            AddInfoSection("", "");
 
             AddInfoTitle("General knowledge (use x and y as variables):");
 
@@ -310,8 +428,6 @@ You can edit a function by selecting it from the list, making the changes you wa
         @"After writing the mathematical expression of a function, add the following:
 ” {x<_, x>_, ...}”
 Example: pow(x,2) {x<2, x>1}");
-
-            //AddInfoImage(Properties.Resources.setboundexample);
 
             AddInfoSection("",
         @"It works for x and y, as long as you put the variable first.
@@ -387,9 +503,9 @@ Example: abs(x)");
         {
             var pictureBox = new PictureBox();
             pictureBox.Image = image;
-            pictureBox.SizeMode = PictureBoxSizeMode.Zoom; // This will maintain aspect ratio
-            pictureBox.Width = infoContentPanel.Width - 40; // Make image width match content width with some padding
-            pictureBox.Height = (int)(image.Height * ((float)pictureBox.Width / image.Width)); // Maintain aspect ratio
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBox.Width = infoContentPanel.Width - 40;
+            pictureBox.Height = (int)(image.Height * ((float)pictureBox.Width / image.Width));
             pictureBox.Margin = new Padding(20, 10, 20, 20);
             infoContentPanel.Controls.Add(pictureBox);
         }
@@ -498,7 +614,6 @@ Example: abs(x)");
             );
             themesPanel.Controls.Add(titleLabel);
 
-            // Define theme data with slightly darker colors
             var themes = new List<(string name, Color circleColor, Color lineColor)>
                           {
                     ("Classic", Color.FromArgb(50, 100, 150), Color.FromArgb(225, 225, 200)),
@@ -520,7 +635,7 @@ Example: abs(x)");
             int startY = 100;
 
             Button selectedButton = null;
-            Color panelBgColor = Color.FromArgb(240, 255, 255); // New background color
+            Color panelBgColor = Color.FromArgb(240, 255, 255);
 
             for (int i = 0; i < themes.Count; i++)
             {
@@ -530,19 +645,16 @@ Example: abs(x)");
                 int xPos = startX + col * (buttonWidth + horizontalSpacing);
                 int yPos = startY + row * (previewSize + buttonHeight + verticalSpacing);
 
-                // Create preview panel with background color
                 var previewPanel = new Panel();
                 previewPanel.Size = new Size(previewSize, previewSize);
                 previewPanel.Location = new Point(xPos + (buttonWidth - previewSize) / 2, yPos);
                 previewPanel.BackColor = panelBgColor;
                 previewPanel.Paint += (sender, e) =>
                 {
-                    // Draw circle
                     e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     e.Graphics.FillEllipse(new SolidBrush(theme.circleColor),
                         previewSize / 4, previewSize / 4, previewSize / 2, previewSize / 2);
 
-                    // Draw line
                     using (var pen = new Pen(theme.lineColor, 4))
                     {
                         e.Graphics.DrawLine(pen, 10, previewSize - 10, previewSize - 10, 10);
@@ -550,13 +662,12 @@ Example: abs(x)");
                 };
                 themesPanel.Controls.Add(previewPanel);
 
-                // Create theme button with new color
                 var themeButton = new Button();
                 themeButton.Text = theme.name;
                 themeButton.Tag = i;
                 themeButton.Font = new Font("Arial", 10, FontStyle.Bold);
                 themeButton.ForeColor = Color.FromArgb(27, 34, 44);
-                themeButton.BackColor = panelBgColor; // Using the same background color
+                themeButton.BackColor = panelBgColor;
                 themeButton.FlatStyle = FlatStyle.Flat;
                 themeButton.FlatAppearance.BorderSize = 2;
                 themeButton.FlatAppearance.BorderColor = Color.FromArgb(36, 42, 55);
@@ -597,10 +708,9 @@ Example: abs(x)");
                 themesPanel.Controls.Add(themeButton);
             }
         }
+
         private void ApplyTheme(int themeIndex, List<(string name, Color circleColor, Color lineColor)> themes)
         {
-            // Implement your theme application logic here
-            // This would change colors in your game based on the selected theme
             var selectedTheme = themes[themeIndex];
 
             foreach (var levelPair in levels)
@@ -608,8 +718,6 @@ Example: abs(x)");
                 levelPair.Value.Graph_color = selectedTheme.lineColor;
                 levelPair.Value.Ball_color = selectedTheme.circleColor;
             }
-
-
         }
 
         private void CreateStatsMenu()
@@ -631,13 +739,11 @@ Example: abs(x)");
             );
             statsPanel.Controls.Add(titleLabel);
 
-            // Create statistics labels
             int startY = 100;
             int spacing = 60;
             int leftLabelWidth = 200;
             int rightLabelWidth = 100;
 
-            // Stars Collected
             var starsLabel = new Label();
             starsLabel.Text = "Stars";
             starsLabel.Font = new Font("Arial", 16, FontStyle.Bold);
@@ -648,7 +754,7 @@ Example: abs(x)");
             statsPanel.Controls.Add(starsLabel);
 
             var starsValue = new Label();
-            starsValue.Text = "0"; // Initialize with 0 or load from saved data
+            starsValue.Text = "0";
             starsValue.Font = new Font("Arial", 16, FontStyle.Regular);
             starsValue.ForeColor = Color.FromArgb(240, 255, 255);
             starsValue.AutoSize = false;
@@ -656,7 +762,6 @@ Example: abs(x)");
             starsValue.Location = new Point(statsPanel.Width - rightLabelWidth - 50, startY);
             statsPanel.Controls.Add(starsValue);
 
-            // Attempts
             var attemptsLabel = new Label();
             attemptsLabel.Text = "Attempts";
             attemptsLabel.Font = new Font("Arial", 16, FontStyle.Bold);
@@ -667,7 +772,7 @@ Example: abs(x)");
             statsPanel.Controls.Add(attemptsLabel);
 
             var attemptsValue = new Label();
-            attemptsValue.Text = "0"; // Initialize with 0 or load from saved data
+            attemptsValue.Text = "0";
             attemptsValue.Font = new Font("Arial", 16, FontStyle.Regular);
             attemptsValue.ForeColor = Color.FromArgb(240, 255, 255);
             attemptsValue.AutoSize = false;
@@ -675,7 +780,6 @@ Example: abs(x)");
             attemptsValue.Location = new Point(statsPanel.Width - rightLabelWidth - 50, startY + spacing);
             statsPanel.Controls.Add(attemptsValue);
 
-            // Balls Generated
             var ballsLabel = new Label();
             ballsLabel.Text = "Balls";
             ballsLabel.Font = new Font("Arial", 16, FontStyle.Bold);
@@ -686,7 +790,7 @@ Example: abs(x)");
             statsPanel.Controls.Add(ballsLabel);
 
             var ballsValue = new Label();
-            ballsValue.Text = "0"; // Initialize with 0 or load from saved data
+            ballsValue.Text = "0";
             ballsValue.Font = new Font("Arial", 16, FontStyle.Regular);
             ballsValue.ForeColor = Color.FromArgb(240, 255, 255);
             ballsValue.AutoSize = false;
@@ -716,7 +820,6 @@ Example: abs(x)");
 
             List<Button> levelButtons = new List<Button>();
 
-            // Button dimensions and spacing
             int buttonWidth = 120;
             int buttonHeight = 60;
             int horizontalSpacing = 20;
@@ -724,60 +827,63 @@ Example: abs(x)");
             int startX = (levelPanel.Width - (5 * buttonWidth + 4 * horizontalSpacing)) / 2;
             int startY = 100;
 
-            // Create 15 level buttons
-            for (int i = 1; i <= 10; i++)
+            for (int i = 1; i <= 15; i++)
             {
+                bool isCompleted = stats.LevelsCompleted.Contains(i);
+
                 Button levelButton = new Button();
                 levelButton.Text = $"Level {i}";
-                levelButton.Tag = i; // Store level number in Tag property
+                levelButton.Tag = i;
                 levelButton.Font = new Font("Arial", 12, FontStyle.Bold);
-                levelButton.ForeColor = Color.FromArgb(27, 34, 44);
-                levelButton.BackColor = Color.FromArgb(240, 255, 255);
                 levelButton.FlatStyle = FlatStyle.Flat;
                 levelButton.FlatAppearance.BorderSize = 2;
                 levelButton.FlatAppearance.BorderColor = Color.FromArgb(36, 42, 55);
                 levelButton.Size = new Size(buttonWidth, buttonHeight);
 
-                // Calculate position based on index
-                int row = (i - 1) / 5; // 0, 1, or 2
-                int col = (i - 1) % 5;  // 0 to 4
-
+                UpdateButtonColors(levelButton, isCompleted, false);
+                
+                int row = (i - 1) / 5;
+                int col = (i - 1) % 5;
                 levelButton.Location = new Point(
                     startX + col * (buttonWidth + horizontalSpacing),
                     startY + row * (buttonHeight + verticalSpacing)
                 );
 
-                // Add hover effects
-                levelButton.MouseEnter += (sender, e) =>
-                {
-                    levelButton.BackColor = Color.White;
-                    levelButton.ForeColor = Color.FromArgb(27, 34, 44);
-                };
-
-                levelButton.MouseLeave += (sender, e) =>
-                {
-                    levelButton.BackColor = Color.FromArgb(240, 255, 255);
-                    levelButton.ForeColor = Color.FromArgb(27, 34, 44);
-                };
-
-                // Add click event
-
                 levelButton.Click += LevelButton_Click;
                 levelPanel.Controls.Add(levelButton);
-                levelButtons.Add(levelButton);
             }
         }
-
+        private void UpdateButtonColors(Button button, bool isCompleted, bool isHovering)
+        {
+            if (isHovering)
+            {
+                button.BackColor = Color.White;
+                button.ForeColor = Color.FromArgb(27, 34, 44);
+            }
+            else
+            {
+                button.BackColor = Color.FromArgb(240, 255, 255);
+                button.ForeColor = Color.FromArgb(27, 34, 44);
+            }
+            if (isCompleted)
+            {
+                button.Font = new Font("Arial", 12, FontStyle.Bold);
+                button.BackColor = Color.Green;
+            }
+            else
+            {
+                button.FlatAppearance.BorderColor = Color.FromArgb(36, 42, 55);
+                button.Font = new Font("Arial", 12, FontStyle.Bold);
+            }
+        }
         private void LevelButton_Click(object sender, EventArgs e)
         {
             Button clickedButton = sender as Button;
             int levelNumber = (int)clickedButton.Tag;
 
-            // Hide the level selection panel
             overlayPanel.Visible = false;
             levelPanel.Visible = false;
 
-            // Start the selected level
             OpenGameWithLevel(levelNumber);
         }
 
@@ -787,17 +893,15 @@ Example: abs(x)");
             {
                 outputDevice = new WaveOutEvent();
 
-                // Get the embedded resource stream
                 var assembly = Assembly.GetExecutingAssembly();
-                var resourceName = "cocstart.bgmusic.wav"; // Namespace.filename.wav
+                var resourceName = "cocstart.cocmusic.wav";
 
                 using (var stream = assembly.GetManifestResourceStream(resourceName))
                 {
                     if (stream == null)
                         throw new Exception("Could not find embedded music resource");
 
-                    // Create a temporary file to play from
-                    string tempFilePath = Path.Combine(Path.GetTempPath(), "bgmusic_temp.wav");
+                    string tempFilePath = Path.Combine(Path.GetTempPath(), "cocmusic_temp.wav");
                     using (var fileStream = File.Create(tempFilePath))
                     {
                         stream.CopyTo(fileStream);
@@ -806,16 +910,13 @@ Example: abs(x)");
                     audioFile = new AudioFileReader(tempFilePath);
                     outputDevice.Init(audioFile);
 
-                    // Set initial volume (50% by default)
                     outputDevice.Volume = 0.5f;
 
-                    // Update volume slider if it exists
                     if (volumeSlider != null)
                     {
                         volumeSlider.Value = (int)(outputDevice.Volume * 100);
                     }
 
-                    // Clean up the temp file when playback stops
                     outputDevice.PlaybackStopped += (s, e) =>
                     {
                         try { File.Delete(tempFilePath); } catch { }
@@ -843,101 +944,103 @@ Example: abs(x)");
         {
             const float scaleFactor = 1.1f;
 
-
-
             playbutton.MouseEnter += (sender, e) =>
             {
                 playbutton.Size = new Size((int)(originalPlayButtonSize.Width * scaleFactor),
-                                         (int)(originalPlayButtonSize.Height * scaleFactor));
+                                           (int)(originalPlayButtonSize.Height * scaleFactor));
                 playbutton.Font = new Font(playbutton.Font.FontFamily,
-                                         playbutton.Font.Size * scaleFactor,
-                                         playbutton.Font.Style);
+                                           playbutton.Font.Size * scaleFactor,
+                                           playbutton.Font.Style);
                 playbutton.Location = new Point(
-                    (this.ClientSize.Width - playbutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - playbutton.Height) / 2 - 100
+                    (this.ClientSize.Width - playbutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.4)
                 );
             };
+
             playbutton.MouseLeave += (sender, e) =>
             {
                 playbutton.Size = originalPlayButtonSize;
                 playbutton.Font = new Font(playbutton.Font.FontFamily,
-                                         playbutton.Font.Size / scaleFactor,
-                                         playbutton.Font.Style);
+                                           playbutton.Font.Size / scaleFactor,
+                                           playbutton.Font.Style);
                 playbutton.Location = new Point(
-                    (this.ClientSize.Width - playbutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - playbutton.Height) / 2 - 100
+                    (this.ClientSize.Width - playbutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.4)
                 );
             };
 
             freemodebutton.MouseEnter += (sender, e) =>
             {
                 freemodebutton.Size = new Size((int)(originalFreeModeButtonSize.Width * scaleFactor),
-                                              (int)(originalFreeModeButtonSize.Height * scaleFactor));
+                                               (int)(originalFreeModeButtonSize.Height * scaleFactor));
                 freemodebutton.Font = new Font(freemodebutton.Font.FontFamily,
-                                             freemodebutton.Font.Size * scaleFactor,
-                                             freemodebutton.Font.Style);
+                                               freemodebutton.Font.Size * scaleFactor,
+                                               freemodebutton.Font.Style);
                 freemodebutton.Location = new Point(
-                    (this.ClientSize.Width - freemodebutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - freemodebutton.Height) / 2 + 100
+                    (this.ClientSize.Width - freemodebutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.6)
                 );
             };
+
             freemodebutton.MouseLeave += (sender, e) =>
             {
                 freemodebutton.Size = originalFreeModeButtonSize;
                 freemodebutton.Font = new Font(freemodebutton.Font.FontFamily,
-                                             freemodebutton.Font.Size / scaleFactor,
-                                             freemodebutton.Font.Style);
+                                               freemodebutton.Font.Size / scaleFactor,
+                                               freemodebutton.Font.Style);
                 freemodebutton.Location = new Point(
-                    (this.ClientSize.Width - freemodebutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - freemodebutton.Height) / 2 + 100
+                    (this.ClientSize.Width - freemodebutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.6)
                 );
             };
 
             themebutton.MouseEnter += (sender, e) =>
             {
                 themebutton.Size = new Size((int)(originalThemeButtonSize.Width * scaleFactor),
-                                           (int)(originalThemeButtonSize.Height * scaleFactor));
+                                             (int)(originalThemeButtonSize.Height * scaleFactor));
                 themebutton.Font = new Font(themebutton.Font.FontFamily,
-                                          themebutton.Font.Size * scaleFactor,
-                                          themebutton.Font.Style);
+                                             themebutton.Font.Size * scaleFactor,
+                                             themebutton.Font.Style);
                 themebutton.Location = new Point(
-                    (this.ClientSize.Width - themebutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - themebutton.Height) / 2 + 250
+                    (this.ClientSize.Width - themebutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.7)
                 );
             };
+
             themebutton.MouseLeave += (sender, e) =>
             {
                 themebutton.Size = originalThemeButtonSize;
                 themebutton.Font = new Font(themebutton.Font.FontFamily,
-                                          themebutton.Font.Size / scaleFactor,
-                                          themebutton.Font.Style);
+                                             themebutton.Font.Size / scaleFactor,
+                                             themebutton.Font.Style);
                 themebutton.Location = new Point(
-                    (this.ClientSize.Width - themebutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - themebutton.Height) / 2 + 250
+                    (this.ClientSize.Width - themebutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.7)
                 );
             };
 
             statsbutton.MouseEnter += (sender, e) =>
             {
-                statsbutton.Size = new Size((int)(originalStatsButtonSize.Width * scaleFactor),
-                                          (int)(originalStatsButtonSize.Height * scaleFactor));
+                statsbutton.Size = new Size((int)(originalThemeButtonSize.Width * scaleFactor),
+                                              (int)(originalThemeButtonSize.Height * scaleFactor));
                 statsbutton.Font = new Font(statsbutton.Font.FontFamily,
-                                           statsbutton.Font.Size * scaleFactor,
-                                           statsbutton.Font.Style);
+                                              statsbutton.Font.Size * scaleFactor,
+                                              statsbutton.Font.Style);
                 statsbutton.Location = new Point(
-                    (this.ClientSize.Width - statsbutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - statsbutton.Height) / 2 + 400
+                    (this.ClientSize.Width - statsbutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.8)
                 );
             };
+
             statsbutton.MouseLeave += (sender, e) =>
             {
-                statsbutton.Size = originalStatsButtonSize;
+                statsbutton.Size = originalThemeButtonSize;
                 statsbutton.Font = new Font(statsbutton.Font.FontFamily,
-                                           statsbutton.Font.Size / scaleFactor,
-                                           statsbutton.Font.Style);
+                                              statsbutton.Font.Size / scaleFactor,
+                                              statsbutton.Font.Style);
                 statsbutton.Location = new Point(
-                    (this.ClientSize.Width - statsbutton.Width) / 2 + 5,
-                    (this.ClientSize.Height - statsbutton.Height) / 2 + 400
+                    (this.ClientSize.Width - statsbutton.Width) / 2,
+                    (int)(this.ClientSize.Height * 0.8)
                 );
             };
 
@@ -1045,62 +1148,63 @@ Example: abs(x)");
 
         private void PositionControls()
         {
-            title.Location = new Point((this.ClientSize.Width - title.Width)/2, 100);
-            pictureBox9.Location = new Point((this.ClientSize.Width - pictureBox9.Width)/2, 110);
-            pictureBox5.Location = new Point(10, this.ClientSize.Height - pictureBox5.Height - 10);
-            pictureBox6.Location = new Point(
-                this.ClientSize.Width - pictureBox6.Width - 10,
-                this.ClientSize.Height - pictureBox6.Height - 10
+            title.Font = new Font("Bahnschrift", (int)(this.ClientSize.Height * 0.07), FontStyle.Bold);
+            playbutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.04));
+            playbutton.Size = new Size((int)(this.ClientSize.Width * 0.3), (int)(this.ClientSize.Height * 0.1));
+            freemodebutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.03));
+            freemodebutton.Size = new Size((int)(this.ClientSize.Width * 0.25), (int)(this.ClientSize.Height * 0.075));
+            themebutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.03));
+            themebutton.Size = new Size((int)(this.ClientSize.Width * 0.25), (int)(this.ClientSize.Height * 0.075));
+            statsbutton.Font = new Font("Microsoft JhengHei", (int)(this.ClientSize.Height * 0.03));
+            statsbutton.Size = new Size((int)(this.ClientSize.Width * 0.25), (int)(this.ClientSize.Height * 0.075));
+
+            originalPlayButtonSize = playbutton.Size;
+            originalFreeModeButtonSize = freemodebutton.Size;
+            originalThemeButtonSize = themebutton.Size;
+            originalStatsButtonSize = statsbutton.Size;
+
+            title.Location = new Point(
+                (this.ClientSize.Width - title.Width) / 2,
+                (int)(this.ClientSize.Height * 0.15)
             );
-            pictureBox7.Location = new Point(this.ClientSize.Width - pictureBox7.Width - 10, 10);
-            pictureBox8.Location = new Point(10, 10);
 
             playbutton.Location = new Point(
-                (this.ClientSize.Width - playbutton.Width) / 2 + 5,
-                (this.ClientSize.Height - playbutton.Height) / 2 - 100
+                (this.ClientSize.Width - playbutton.Width) / 2,
+                (int)(this.ClientSize.Height * 0.4)
             );
-            playbutton.ForeColor = Color.FromArgb(27, 34, 44);
 
             freemodebutton.Location = new Point(
-                (this.ClientSize.Width - freemodebutton.Width) / 2 + 5,
-                (this.ClientSize.Height - freemodebutton.Height) / 2 + 100
+                (this.ClientSize.Width - freemodebutton.Width) / 2,
+                (int)(this.ClientSize.Height * 0.6)
             );
-            freemodebutton.ForeColor = Color.FromArgb(27, 34, 44);
 
             themebutton.Location = new Point(
-                (this.ClientSize.Width - themebutton.Width) / 2 + 5,
-                (this.ClientSize.Height - themebutton.Height) / 2 + 250
+                (this.ClientSize.Width - themebutton.Width) / 2,
+                (int)(this.ClientSize.Height * 0.7)
             );
-            themebutton.ForeColor = Color.FromArgb(27, 34, 44);
 
             statsbutton.Location = new Point(
-                (this.ClientSize.Width - statsbutton.Width) / 2 + 5,
-                (this.ClientSize.Height - statsbutton.Height) / 2 + 400
+                (this.ClientSize.Width - statsbutton.Width) / 2,
+                (int)(this.ClientSize.Height * 0.8)
             );
-            statsbutton.ForeColor = Color.FromArgb(27, 34, 44);
+
+
+            Color textColor = Color.FromArgb(27, 34, 44);
+            playbutton.ForeColor = textColor;
+            freemodebutton.ForeColor = textColor;
+            themebutton.ForeColor = textColor;
+            statsbutton.ForeColor = textColor;
+
+            pictureBox5.Location = new Point(10, this.ClientSize.Height - pictureBox5.Height - 10);
+            pictureBox6.Location = new Point(this.ClientSize.Width - pictureBox6.Width - 10, this.ClientSize.Height - pictureBox6.Height - 10);
+            pictureBox7.Location = new Point(this.ClientSize.Width - pictureBox7.Width - 10, 10);
+            pictureBox8.Location = new Point(10, 10);
 
             quit.Location = new Point(
                 pictureBox7.Location.X + (pictureBox7.Width - quit.Width) / 2,
                 pictureBox7.Location.Y + (pictureBox7.Height - quit.Height) / 2
             );
             quit.ForeColor = Color.FromArgb(27, 34, 44);
-
-            pictureBox1.Location = new Point(
-                (this.ClientSize.Width - pictureBox1.Width) / 2 + 5,
-                (this.ClientSize.Height - pictureBox1.Height) / 2 - 100
-            );
-            pictureBox2.Location = new Point(
-                (this.ClientSize.Width - pictureBox2.Width) / 2 + 5,
-                (this.ClientSize.Height - pictureBox2.Height) / 2 + 100
-            );
-            pictureBox3.Location = new Point(
-                (this.ClientSize.Width - pictureBox3.Width) / 2 + 5,
-                (this.ClientSize.Height - pictureBox3.Height) / 2 + 250
-            );
-            pictureBox4.Location = new Point(
-                (this.ClientSize.Width - pictureBox4.Width) / 2 + 5,
-                (this.ClientSize.Height - pictureBox4.Height) / 2 + 400
-            );
             gear.Location = new Point(
                 pictureBox5.Location.X + (pictureBox5.Width - quit.Width) / 2,
                 pictureBox5.Location.Y + (pictureBox5.Height - quit.Height) / 2
@@ -1137,7 +1241,6 @@ Example: abs(x)");
 
         private void gear_Click(object sender, EventArgs e)
         {
-            // Position the settings panel in the center
             if (overlayPanel == null)
             {
                 overlayPanel = new Panel();
@@ -1148,7 +1251,6 @@ Example: abs(x)");
                 overlayPanel.BringToFront();
             }
 
-            // Position the settings panel in the center
             settingsPanel.Location = new Point(
                 (this.ClientSize.Width - settingsPanel.Width) / 2,
                 (this.ClientSize.Height - settingsPanel.Height) / 2
@@ -1164,7 +1266,7 @@ Example: abs(x)");
 
         private void togglemusic_Click(object sender, EventArgs e)
         {
-            outputDevice.Volume = 0; // Mute
+            outputDevice.Volume = 0;
             isMusicMuted = true;
             togglemusicoff.Hide();
             togglemusicon.Show();
@@ -1217,11 +1319,66 @@ Example: abs(x)");
             {
                 overlayPanel = new Panel();
                 overlayPanel.Dock = DockStyle.Fill;
-                overlayPanel.BackColor = Color.Black;
+                overlayPanel.BackColor = Color.FromArgb(180, 0, 0, 0);
                 overlayPanel.Visible = false;
                 this.Controls.Add(overlayPanel);
-                overlayPanel.BringToFront();
             }
+
+            if (statsPanel == null)
+            {
+                statsPanel = new Panel();
+                statsPanel.Size = new Size(300, 200);
+                statsPanel.BackColor = Color.DarkSlateGray;
+                statsPanel.BorderStyle = BorderStyle.FixedSingle;
+                statsPanel.Visible = false;
+
+                overlayPanel.Controls.Add(statsPanel);
+            }
+
+            statsPanel.Controls.Clear();
+
+            Label titleLabel = new Label();
+            titleLabel.Text = "Game Statistics";
+            titleLabel.Font = new Font("Segoe UI", 14, FontStyle.Bold);
+            titleLabel.ForeColor = Color.White;
+            titleLabel.AutoSize = true;
+            titleLabel.Location = new Point(10, 10);
+            statsPanel.Controls.Add(titleLabel);
+
+            Label levelsLabel = new Label();
+            levelsLabel.Text = $"Levels completed: {string.Join(", ", stats.LevelsCompleted)}";
+            levelsLabel.ForeColor = Color.White;
+            levelsLabel.AutoSize = true;
+            levelsLabel.Location = new Point(10, 50);
+            statsPanel.Controls.Add(levelsLabel);
+
+            Label starsLabel = new Label();
+            starsLabel.Text = $"Stars collected: {stats.StarsCollected}";
+            starsLabel.ForeColor = Color.White;
+            starsLabel.AutoSize = true;
+            starsLabel.Location = new Point(10, 80);
+            statsPanel.Controls.Add(starsLabel);
+
+            Label timeLabel = new Label();
+            timeLabel.Text = $"Play time: {stats.TotalPlayTimeSeconds:F1} seconds";
+            timeLabel.ForeColor = Color.White;
+            timeLabel.AutoSize = true;
+            timeLabel.Location = new Point(10, 110);
+            statsPanel.Controls.Add(timeLabel);
+
+            Button closeButton = new Button();
+            closeButton.Text = "Delete save";
+            closeButton.Location = new Point(10, 150);
+            closeButton.Size = new Size(80, 30);
+            closeButton.ForeColor = Color.FromArgb(27, 34, 44);
+            closeButton.BackColor = Color.FromArgb(240, 255, 255);
+            closeButton.Click += (s, args) =>
+            {
+                DeleteStats();
+                Application.Restart();
+
+            };
+            statsPanel.Controls.Add(closeButton);
 
             statsPanel.Location = new Point(
                 (this.ClientSize.Width - statsPanel.Width) / 2,
@@ -1234,6 +1391,7 @@ Example: abs(x)");
             overlayPanel.BringToFront();
             statsPanel.BringToFront();
         }
+
 
         private void playbutton_Click(object sender, EventArgs e)
         {
@@ -1282,14 +1440,79 @@ Example: abs(x)");
             var level = levels[levelIndex];
             Game form1 = new Game(level);
 
+            playTimer.Restart();
+
             this.Hide();
-            form1.FormClosed += (s, e) => this.Show(); // revine la selector dacã închizi jocul
+            form1.FormClosed += (s, e) =>
+            {
+                playTimer.Stop();
+
+                if (form1.LevelCompleted)
+                {
+                    stats.LevelsCompleted.Add(levelIndex);
+                }
+                stats.StarsCollected += form1.StarsCollected; 
+
+                SaveStats();
+                this.Show();
+            };
             form1.Show();
         }
+
 
         private void freemodebutton_Click(object sender, EventArgs e)
         {
             OpenGameWithLevel(0);
         }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            playTimer.Stop();
+            stats.TotalPlayTimeSeconds += (float)playTimer.Elapsed.TotalSeconds;
+            SaveStats();
+        }
+
+        private void LoadStats()
+        {
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(filePath);
+                    stats = JsonSerializer.Deserialize<GameStats>(json) ?? new GameStats();
+                }
+                catch
+                {
+                    stats = new GameStats(); // fallback
+                }
+            }
+        }
+
+        private void SaveStats()
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            string json = JsonSerializer.Serialize(stats, options);
+            File.WriteAllText(filePath, json);
+        }
+
+        private void DeleteStats()
+        {
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to delete save file:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+            stats = new GameStats(); 
+        }
+
+
     }
 }
+
